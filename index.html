@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>에듀피셔 부모용 학습유형 진단 · 밸런스게임</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#0b1220; --muted:#94a3b8; --text:#e5e7eb;
+      --accent:#5CB9AE; --accent2:#EFE42E; --shadow:0 10px 25px rgba(0,0,0,.35); --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(160deg,#0b1024,#0f172a,#0b1024);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .container{max-width:980px;margin:0 auto;padding:24px}
+    header{display:flex;gap:12px;align-items:center;margin:6px 0 14px}
+    h1{font-size:clamp(22px,3.2vw,34px);margin:0}
+    .badge{background:linear-gradient(90deg,var(--accent),#72d2c7);color:#072a29;padding:6px 12px;border-radius:999px;font-weight:700;box-shadow:var(--shadow)}
+    .card{background:linear-gradient(170deg,#0b1220,#0e1a2f);border:1px solid rgba(255,255,255,.06);box-shadow:var(--shadow);border-radius:var(--radius);padding:18px;margin:12px 0}
+
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:720px){.grid2{grid-template-columns:1fr}}
+
+    input[type="text"]{background:#0e1a2f;border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:10px;padding:10px 12px;min-width:220px}
+    .small{font-size:12px;color:var(--muted)}
+
+    /* Stepper */
+    .stepper{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+    .bubble{min-width:28px;height:28px;border-radius:999px;display:grid;place-items:center;font-weight:800;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06)}
+    .bubble.active{background:linear-gradient(90deg,var(--accent),#72d2c7);color:#052826;border-color:transparent}
+    .sep{width:22px;height:2px;background:rgba(255,255,255,.2)}
+
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    button{all:unset;cursor:pointer;padding:12px 16px;border-radius:12px;font-weight:800}
+    .primary{background:linear-gradient(90deg,var(--accent),#72d2c7);color:#052826}
+    .ghost{border:1px solid rgba(255,255,255,.2);color:#e5efff}
+
+    /* Balance cards */
+    .axis-title{font-weight:900;color:#dbe8ff;margin:6px 0 10px}
+    .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+    @media (max-width:760px){.pair{grid-template-columns:1fr}}
+    .opt{border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px;background:rgba(255,255,255,.03);cursor:pointer;position:relative}
+    .opt:hover{border-color:rgba(255,255,255,.35)}
+    .opt[data-side="L"]::before{content:"◀";position:absolute;left:10px;top:10px;opacity:.35}
+    .opt[data-side="R"]::before{content:"▶";position:absolute;right:10px;top:10px;opacity:.35}
+    .opt.selected{background:linear-gradient(160deg, rgba(92,185,174,.18), rgba(124,218,208,.10));border-color:rgba(92,185,174,.65);box-shadow:0 0 0 4px rgba(92,185,174,.20)}
+
+    .legend{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{padding:6px 10px;border-radius:999px;background:rgba(92,185,174,.14);border:1px solid rgba(92,185,174,.35);font-weight:700;color:#d8fff8}
+
+    .hidden{display:none}
+
+    /* Result */
+    .bar{height:12px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+    .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#7cdad0)}
+    .result-body{position:relative}
+    .blur-overlay{position:absolute;inset:120px 0 0 0;background:rgba(9,15,28,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:22px;border-radius:var(--radius);border:1px dashed rgba(255,255,255,.25)}
+    .overlay-note{font-size:15px;color:#eaf6ff}
+    .warm{font-weight:800;font-size:18px;margin-top:6px}
+
+    a.cta{display:inline-block;margin-top:12px;padding:12px 16px;border-radius:12px;background:linear-gradient(90deg,#FFE066,var(--accent2));color:#2b2400;font-weight:900;text-decoration:none}
+
+    footer{opacity:.8;margin-top:18px;font-size:13px;color:#c3d2ff}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">Edufisher · Parents</span>
+      <h1>부모용 자녀 학습유형 진단 (밸런스게임)</h1>
+    </header>
+
+    <div class="card">
+      <div class="grid2">
+        <label><div class="small">자녀 이름</div><input id="child" type="text" placeholder="예) 홍길동"></label>
+        <label><div class="small">보호자 성함</div><input id="parent" type="text" placeholder="예) 홍길순"></label>
+      </div>
+      <div class="small" style="margin-top:6px">※ 각 라운드에서 더 닮았다고 느끼는 쪽을 선택하세요. (무응답 불가)</div>
+    </div>
+
+    <!-- Stepper -->
+    <div class="stepper" id="stepper"></div>
+
+    <!-- Steps -->
+    <section class="card step" id="step-0">
+      <div class="axis-title">① 몰입형 vs 탐험형</div>
+      <div class="legend">
+        <span class="pill">왼쪽: 몰입형</span>
+        <span class="pill">오른쪽: 탐험형</span>
+      </div>
+      <div id="pairs-CT"></div>
+      <div class="actions">
+        <button class="primary" id="next0">다음 항목 ▶</button>
+      </div>
+    </section>
+
+    <section class="card step hidden" id="step-1">
+      <div class="axis-title">② 계획형 vs 즉흥형</div>
+      <div class="legend">
+        <span class="pill">왼쪽: 계획형</span>
+        <span class="pill">오른쪽: 즉흥형</span>
+      </div>
+      <div id="pairs-PJ"></div>
+      <div class="actions">
+        <button class="ghost" id="prev1">◀ 이전</button>
+        <button class="primary" id="next1">다음 항목 ▶</button>
+      </div>
+    </section>
+
+    <section class="card step hidden" id="step-2">
+      <div class="axis-title">③ 창의형 vs 현실형</div>
+      <div class="legend">
+        <span class="pill">왼쪽: 창의형</span>
+        <span class="pill">오른쪽: 현실형</span>
+      </div>
+      <div id="pairs-NR"></div>
+      <div class="actions">
+        <button class="ghost" id="prev2">◀ 이전</button>
+        <button class="primary" id="next2">다음 항목 ▶</button>
+      </div>
+    </section>
+
+    <section class="card step hidden" id="step-3">
+      <div class="axis-title">④ 완벽형 vs 감정형</div>
+      <div class="legend">
+        <span class="pill">왼쪽: 완벽형</span>
+        <span class="pill">오른쪽: 감정형</span>
+      </div>
+      <div id="pairs-FA"></div>
+      <div class="actions">
+        <button class="ghost" id="prev3">◀ 이전</button>
+        <button class="primary" id="seeResult">결과 보기</button>
+      </div>
+    </section>
+
+    <!-- 결과 -->
+    <section class="card hidden" id="resultCard">
+      <div class="result-body">
+        <div style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+          <div>
+            <div class="pill" id="resultName">자녀: -</div>
+            <h2 style="margin:.3rem 0 0;font-size:22px">예상 학습유형: <span id="typeName" style="color:#9df5e8"></span></h2>
+            <div class="small">(4개 축 우세 방향으로 산출)</div>
+          </div>
+          <div style="min-width:220px">
+            <div class="small">축별 비율</div>
+            <div class="bar" style="margin:6px 0 6px"><span id="barCT" style="width:50%"></span></div>
+            <div class="bar" style="margin:6px 0 6px"><span id="barPJ" style="width:50%"></span></div>
+            <div class="bar" style="margin:6px 0 6px"><span id="barNR" style="width:50%"></span></div>
+            <div class="bar" style="margin:6px 0 0"><span id="barFA" style="width:50%"></span></div>
+            <div class="small">왼쪽 0% ↔ 오른쪽 100%</div>
+          </div>
+        </div>
+
+        <!-- 블러는 아래 상세만 덮음 -->
+        <div class="card" style="margin-top:12px;background:rgba(255,255,255,.04)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div class="axis-title">아이의 특징 (요약)</div>
+              <ul id="feat" style="margin:6px 0 0 18px;line-height:1.6"></ul>
+            </div>
+            <div>
+              <div class="axis-title">추천 코칭 방향 (요약)</div>
+              <ul id="coach" style="margin:6px 0 0 18px;line-height:1.6"></ul>
+            </div>
+          </div>
+          <div class="axis-title" style="margin-top:12px">가정에서 도울 수 있는 한 줄 팁</div>
+          <div id="homeTip" class="pill" style="display:inline-block;margin-top:6px">-</div>
+        </div>
+
+        <div class="blur-overlay" id="blur">
+          <div class="overlay-note">아래 상세 해석은 상담 시 안내됩니다.</div>
+          <div class="warm">아이의 가능성은 이미 자라고 있어요 🌱</div>
+          <a class="cta" id="ctaLink" href="#">상담 신청하기</a>
+          <div class="small" style="margin-top:6px">버튼 링크는 관리자 설정에서 변경하세요.</div>
+        </div>
+      </div>
+    </section>
+
+    <footer>Edufisher © 2025 · 본 도구는 부모용 간이 해석을 제공합니다. 전문 코칭은 방문 상담을 통해 진행됩니다.</footer>
+  </div>
+
+  <script>
+    // ====== 원문항 (파일 기반) ======
+    const Q_CT = [
+      {text:'한 가지 일에 오래 집중하는 편이다.', side:'L'},
+      {text:'자신이 좋아하는 일에 시간 가는 줄 모른다.', side:'L'},
+      {text:'새로운 놀이를 스스로 만들어낸다.', side:'R'},
+      {text:'깊게 생각하거나 상상하는 것을 좋아한다.', side:'L'},
+      {text:'좋아하는 주제가 생기면 그것만 반복하려 한다.', side:'L'},
+      {text:'다양한 친구와 활동을 함께 하려고 한다.', side:'R'},
+      {text:'매일 똑같은 일보다는 새로운 것을 더 좋아한다.', side:'R'},
+      {text:'관심 분야에서 아주 세세한 것까지 알고 싶어 한다.', side:'L'},
+      {text:'스스로 상상의 세계를 만들고 논다.', side:'L'},
+      {text:'같은 책을 반복해서 보며 내용을 익힌다.', side:'L'},
+      {text:'다양한 놀이를 번갈아 시도하는 걸 즐긴다.', side:'R'},
+      {text:'하나의 장난감으로 아주 오랫동안 논다.', side:'L'},
+      {text:'경험하지 못한 것을 경험하려고 한다.', side:'R'},
+      {text:'혼자 집중해서 작업하는 것을 즐긴다.', side:'L'},
+      {text:'익숙하지 않은 곳이나 사람도 잘 탐색한다.', side:'R'},
+      {text:'자신이 좋아하는 물건은 항상 챙기고 논다.', side:'L'},
+      {text:'새로운 장소에 가면 꼭 돌아다니며 살펴본다.', side:'R'},
+      {text:'작은 차이나 변화를 잘 눈치챈다.', side:'L'},
+      {text:'어떤 상황에서도 금방 놀이를 시작한다.', side:'R'},
+      {text:'처음 접하는 일에도 거부감 없이 도전한다.', side:'R'},
+    ];
+    const Q_PJ = [
+      {text:'하루 일정을 미리 정해두고 움직이려는 경향이 있다.', side:'L'},
+      {text:'새로운 과제를 시작하기 전에 계획부터 세우려 한다.', side:'L'},
+      {text:'시간 약속을 잘 지키려 노력한다.', side:'L'},
+      {text:'공부 순서를 스스로 정해두고 그 순서대로 하려 한다.', side:'L'},
+      {text:'준비물을 전날 미리 챙기려는 편이다.', side:'L'},
+      {text:'갑작스러운 변화에 당황하거나 불편해한다.', side:'L'},
+      {text:'계획한 일이 흐트러지면 스트레스를 받는다.', side:'L'},
+      {text:'목표를 세우고 그것을 지키려는 의지가 강하다.', side:'L'},
+      {text:'시간표나 체크리스트를 자주 만든다.', side:'L'},
+      {text:'미리 준비된 환경에서 안정감을 느낀다.', side:'L'},
+      {text:'그때그때 기분에 따라 행동하는 편이다.', side:'R'},
+      {text:'갑자기 하고 싶은 것이 생기면 바로 실행에 옮긴다.', side:'R'},
+      {text:'계획 없이도 일을 잘 처리하는 편이다.', side:'R'},
+      {text:'공부할 때도 흥미 있는 과목부터 먼저 하려 한다.', side:'R'},
+      {text:'유연하게 상황을 받아들이는 편이다.', side:'R'},
+      {text:'갑작스러운 변화를 두려워하지 않는다.', side:'R'},
+      {text:'즉석에서 아이디어를 잘 내는 편이다.', side:'R'},
+      {text:'계획을 세우는 것을 답답하게 느낀다.', side:'R'},
+      {text:'친구들과의 약속도 즉흥적으로 잡는 경우가 많다.', side:'R'},
+      {text:'다양한 자극을 좋아하고 반복을 지루해한다.', side:'R'},
+    ];
+    const Q_NR = [
+      {text:'엉뚱한 상상이나 이야기를 자주 한다.', side:'L'},
+      {text:'그림, 만들기, 글짓기 등에 흥미가 많다.', side:'L'},
+      {text:'새로운 놀이를 스스로 만들어낸 적이 있다.', side:'L'},
+      {text:'주어진 방법 대신 자신만의 방법을 시도하려 한다.', side:'L'},
+      {text:'질문이 많고, “왜?”라는 말을 자주 한다.', side:'L'},
+      {text:'비현실적인 아이디어도 자주 떠올린다.', side:'L'},
+      {text:'자유롭게 표현하는 활동에서 즐거움을 느낀다.', side:'L'},
+      {text:'정해진 규칙에 얽매이는 것을 싫어한다.', side:'L'},
+      {text:'평범한 것보다 독특한 것을 좋아한다.', side:'L'},
+      {text:'감정과 상상을 통해 문제를 해결하려는 경향이 있다.', side:'L'},
+      {text:'실제 상황과 관련된 활동을 더 선호한다.', side:'R'},
+      {text:'실현 가능한 아이디어에 집중하는 편이다.', side:'R'},
+      {text:'구체적인 예시나 설명이 있을 때 이해가 빠르다.', side:'R'},
+      {text:'사실 기반의 책이나 정보에 흥미를 가진다.', side:'R'},
+      {text:'감정보다는 사실을 중요하게 여긴다.', side:'R'},
+      {text:'상상보다는 관찰에 더 관심을 가진다.', side:'R'},
+      {text:'명확한 규칙과 절차를 따르는 것을 좋아한다.', side:'R'},
+      {text:'‘정답’이 있는 문제를 선호한다.', side:'R'},
+      {text:'주변에서 일어나는 현실적인 일에 민감하다.', side:'R'},
+      {text:'모호한 상황보다는 분명한 상황에서 안정감을 느낀다.', side:'R'},
+    ];
+    const Q_FA = [
+      {text:'실수하는 것을 두려워하거나 싫어한다.', side:'L'},
+      {text:'틀린 문제를 끝까지 다시 풀려고 한다.', side:'L'},
+      {text:'자신이 한 일에 만족하지 못하는 경우가 많다.', side:'L'},
+      {text:'기준이 높고 꼼꼼한 편이다.', side:'L'},
+      {text:'글씨나 정리 상태에 신경을 많이 쓴다.', side:'L'},
+      {text:'항상 더 잘하려는 욕심이 있다.', side:'L'},
+      {text:'자신의 실수나 부족한 점을 오래 기억하는 편이다.', side:'L'},
+      {text:'결과보다 과정에 집중하는 경향이 있다.', side:'L'},
+      {text:'스스로를 쉽게 칭찬하지 않는다.', side:'L'},
+      {text:'다른 아이들과 비교하며 더 잘하려 노력한다.', side:'L'},
+      {text:'칭찬에 민감하게 반응하고 힘을 얻는다.', side:'R'},
+      {text:'실수해도 “괜찮아”라고 쉽게 넘어간다.', side:'R'},
+      {text:'즐겁고 재미있을 때 몰입이 잘 된다.', side:'R'},
+      {text:'감정 표현이 풍부하다.', side:'R'},
+      {text:'활동에 의미나 감정을 연결해 설명하는 편이다.', side:'R'},
+      {text:'사람의 기분이나 분위기를 잘 느낀다.', side:'R'},
+      {text:'감정에 따라 행동이 달라지기도 한다.', side:'R'},
+      {text:'결과보다 즐거운 경험 자체를 더 중요하게 여긴다.', side:'R'},
+      {text:'실수했을 때도 크게 낙담하지 않는다.', side:'R'},
+      {text:'자유롭게 표현하는 활동을 더 선호한다.', side:'R'},
+    ];
+
+    // 밸런스게임용 페어 만들기 (왼쪽문항 배열 vs 오른쪽문항 배열 1:1)
+    function makePairs(list){
+      const L = list.filter(i=>i.side==='L').map(i=>i.text);
+      const R = list.filter(i=>i.side==='R').map(i=>i.text);
+      const n = Math.min(L.length, R.length);
+      const pairs=[];
+      for(let i=0;i<n;i++){pairs.push({L:L[i], R:R[i], pick:null});}
+      return pairs;
+    }
+
+    const PAIRS = {
+      CT: makePairs(Q_CT),
+      PJ: makePairs(Q_PJ),
+      NR: makePairs(Q_NR),
+      FA: makePairs(Q_FA)
+    };
+
+    function renderPairs(axisKey, mountId){
+      const mount = document.getElementById(mountId);
+      mount.innerHTML = '';
+      PAIRS[axisKey].forEach((p, idx)=>{
+        const row = document.createElement('div');
+        row.className = 'pair';
+        const left = document.createElement('div');
+        left.className = 'opt';
+        left.dataset.side = 'L';
+        left.innerHTML = `<div class="small">${idx+1}A</div><div>${p.L}</div>`;
+        const right = document.createElement('div');
+        right.className = 'opt';
+        right.dataset.side = 'R';
+        right.innerHTML = `<div class="small">${idx+1}B</div><div>${p.R}</div>`;
+        if(p.pick==='L') left.classList.add('selected');
+        if(p.pick==='R') right.classList.add('selected');
+        left.addEventListener('click',()=>{p.pick='L'; left.classList.add('selected'); right.classList.remove('selected');});
+        right.addEventListener('click',()=>{p.pick='R'; right.classList.add('selected'); left.classList.remove('selected');});
+        row.appendChild(left); row.appendChild(right);
+        mount.appendChild(row);
+      });
+    }
+
+    // 렌더
+    renderPairs('CT','pairs-CT');
+    renderPairs('PJ','pairs-PJ');
+    renderPairs('NR','pairs-NR');
+    renderPairs('FA','pairs-FA');
+
+    // 스텝 전환 & 스텝퍼
+    const steps = [0,1,2,3];
+    let cur = 0;
+    function drawStepper(){
+      const s = document.getElementById('stepper');
+      s.innerHTML = '';
+      steps.forEach((i,idx)=>{
+        const b = document.createElement('div'); b.className = 'bubble'+(idx===cur?' active':''); b.textContent = (idx+1);
+        s.appendChild(b); if(idx<steps.length-1){const sep=document.createElement('div'); sep.className='sep'; s.appendChild(sep);} }
+      );
+    }
+    function showStep(i){
+      cur = i; drawStepper();
+      steps.forEach((n)=>{document.getElementById('step-'+n).classList.add('hidden');});
+      document.getElementById('step-'+i).classList.remove('hidden');
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    drawStepper();
+
+    // 유효성 확인 (모든 페어 선택 필수)
+    function validateAxis(axisKey){
+      const allPicked = PAIRS[axisKey].every(p=>p.pick==='L' || p.pick==='R');
+      if(!allPicked){alert('모든 라운드에서 하나를 선택해 주세요.');}
+      return allPicked;
+    }
+
+    document.getElementById('next0').addEventListener('click',()=>{ if(validateAxis('CT')) showStep(1); });
+    document.getElementById('prev1').addEventListener('click',()=> showStep(0));
+    document.getElementById('next1').addEventListener('click',()=>{ if(validateAxis('PJ')) showStep(2); });
+    document.getElementById('prev2').addEventListener('click',()=> showStep(1));
+    document.getElementById('next2').addEventListener('click',()=>{ if(validateAxis('NR')) showStep(3); });
+    document.getElementById('prev3').addEventListener('click',()=> showStep(2));
+
+    // 비율 산출 (오른쪽 선택 비율)
+    function pctFromPairs(axisKey){
+      const arr = PAIRS[axisKey];
+      const Rcnt = arr.filter(p=>p.pick==='R').length;
+      return Math.round((Rcnt/arr.length)*100);
+    }
+
+    // 결과 계산 및 표시
+    function showResult(){
+      if(!validateAxis('FA')) return; // 마지막 축까지 확인
+      const pcts = { CT:pctFromPairs('CT'), PJ:pctFromPairs('PJ'), NR:pctFromPairs('NR'), FA:pctFromPairs('FA') };
+      document.getElementById('barCT').style.width = pcts.CT+'%';
+      document.getElementById('barPJ').style.width = pcts.PJ+'%';
+      document.getElementById('barNR').style.width = pcts.NR+'%';
+      document.getElementById('barFA').style.width = pcts.FA+'%';
+
+      const code = (pcts.CT>=50?'R':'L')+(pcts.PJ>=50?'R':'L')+(pcts.NR>=50?'R':'L')+(pcts.FA>=50?'R':'L');
+      const typeName = decideType(pcts);
+      document.getElementById('typeName').textContent = `${typeName} (코드: ${code})`;
+      document.getElementById('resultName').textContent = '자녀: ' + (document.getElementById('child').value || '-');
+
+      // 상세(피쳐/코칭/팁) 채워두되 블러로 가림
+      const feats = FEATURES[code] || ['혼합된 강점이 보여요.','상담에서 세부 전략을 함께 설계해요.'];
+      const coach = COACH[code] || ['주 1회 체크인','작은 성공 경험부터 쌓기'];
+      const tip = TIP[code] || '오늘 한 가지, 내일 한 가지—꾸준함이 힘입니다.';
+      document.getElementById('feat').innerHTML = feats.map(x=>`<li>${x}</li>`).join('');
+      document.getElementById('coach').innerHTML = coach.map(x=>`<li>${x}</li>`).join('');
+      document.getElementById('homeTip').textContent = tip;
+
+      document.getElementById('resultCard').classList.remove('hidden');
+      window.scrollTo({top: document.getElementById('resultCard').offsetTop - 10, behavior:'smooth'});
+    }
+
+    // 타입 이름 매핑 및 요약 데이터 (이전 버전 재사용)
+    function decideType(pcts){
+      const lr = (p)=> p>=50 ? 'R' : 'L';
+      const code = lr(pcts.CT)+lr(pcts.PJ)+lr(pcts.NR)+lr(pcts.FA);
+      const map = {
+        'LLLL':'집중·계획·창의·완벽형 — "정교한 장인형"',
+        'LLLR':'집중·계획·창의·감정형 — "섬세한 크리에이터"',
+        'LLRL':'집중·계획·현실·완벽형 — "분석가형"',
+        'LLRR':'집중·계획·현실·감정형 — "따뜻한 분석가"',
+        'LRLL':'집중·즉흥·창의·완벽형 — "몰입형 발명가"',
+        'LRLR':'집중·즉흥·창의·감정형 — "감성 발명가"',
+        'LRRL':'집중·즉흥·현실·완벽형 — "현장 해결사"',
+        'LRRR':'집중·즉흥·현실·감정형 — "유연한 해결사"',
+        'RLLL':'탐험·계획·창의·완벽형 — "전략적 탐험가"',
+        'RLLR':'탐험·계획·창의·감정형 — "따뜻한 전략가"',
+        'RLRL':'탐험·계획·현실·완벽형 — "체계적 탐험가"',
+        'RLRR':'탐험·계획·현실·감정형 — "조율형 탐험가"',
+        'RRLL':'탐험·즉흥·창의·완벽형 — "자유 크리에이터"',
+        'RRLR':'탐험·즉흥·창의·감정형 — "에너제틱 크리에이터"',
+        'RRRL':'탐험·즉흥·현실·완벽형 — "실전형 모험가"',
+        'RRRR':'탐험·즉흥·현실·감정형 — "스파크 모험가"',
+      };
+      return map[code] || '혼합형';
+    }
+
+    const FEATURES = {
+      LLLL:[ '오랜 몰입과 정교함을 강점으로 보여요.', '명확한 계획과 루틴에서 최고의 성과를 냅니다.' ],
+      LLLR:[ '몰입과 창의가 동시에 강해요.', '감정적 동기(의미/가치)를 찾으면 속도가 납니다.' ],
+      LLRL:[ '현실 감각과 완성도를 함께 추구해요.', '정확한 목표-체크리스트에 강합니다.' ],
+      LLRR:[ '분석과 공감의 균형이 좋아요.', '사실 기반 학습을 따뜻한 피드백과 연결하면 좋습니다.' ],
+      LRLL:[ '아이디어 폭발 + 디테일 보정 능력.', '몰입-휴식 리듬을 설계하면 성과가 커져요.' ],
+      LRLR:[ '재미와 의미를 만나면 속도가 납니다.', '프로젝트형 과제에 강합니다.' ],
+      LRRL:[ '즉흥-실전 감각이 좋아요.', '짧은 과제 반복으로 성취를 쌓으면 좋아요.' ],
+      LRRR:[ '유연하고 사람/상황에 민감합니다.', '팀 활동과 탐구형 과제에서 에너지가 납니다.' ],
+      RLLL:[ '탐험을 좋아하지만 설계력도 갖춘 타입.', '새로움을 루틴으로 정착시키는 힘이 있어요.' ],
+      RLLR:[ '전략과 감성이 공존해요.', '의미 중심 미션이 동기를 높입니다.' ],
+      RLRL:[ '현실 감각 + 계획력의 조합.', '구체적 예시와 체크리스트에 강합니다.' ],
+      RLRR:[ '조율과 협업이 강점이에요.', '사실-감정 브리징 활동이 잘 맞아요.' ],
+      RRLL:[ '자유도 높은 창작에 강해요.', '개방형 프로젝트에서 몰입합니다.' ],
+      RRLR:[ '활동성이 크고 창의적 표현을 좋아해요.', '짧고 재밌는 목표-보상 구조가 효과적.' ],
+      RRRL:[ '실전형 과제와 미션 수행에 강합니다.', '체크리스트 기반 빠른 실행이 잘 맞아요.' ],
+      RRRR:[ '새로움과 사람, 감정에서 에너지를 얻어요.', '경험-공유-확장 루프가 동기를 올립니다.' ],
+    };
+    const COACH = {
+      LLLL:['루틴 고정 → 단계별 난이도 상승','오류-수정 저널로 정교함 강화'],
+      LLLR:['의미찾기 질문 → 스토리 기반 과제','몰입 블록 후 감정리뷰 1문장'],
+      LLRL:['목표-체크인(주 2회)','실전 예시→원리→적용 순서고정'],
+      LLRR:['사실 요약 후 감정 피드백','미니 프로젝트로 적용-공유'],
+      LRLL:['스프린트(20-5) 후 디테일 폴리싱','아이디어→선택→완성 루프'],
+      LRLR:['재미 요소 먼저 설계','완료 후 “의미 한줄” 적기'],
+      LRRL:['짧은 미션 연속 클리어','체크리스트로 즉흥력 안전가드'],
+      LRRR:['팀/발표 기회 자주 제공','경험-느낀점-확장 질문'],
+      RLLL:['탐험 후 정착 루틴화','새 단원 시작 시 계획세션'],
+      RLLR:['가치 연결 미션 만들기','공감 피드백 카드 활용'],
+      RLRL:['예시-규칙-연습 3단 구조','주간 점검표로 안정감 제공'],
+      RLRR:['사실-감정 균형 과제','짝토론/협업 보고서'],
+      RRLL:['자율 프로젝트 허용','튜닝 타임으로 완성도 높이기'],
+      RRLR:['게임화 보상(스탬프)','짧은 발표로 표현 강화'],
+      RRRL:['현장형 과제(실험/탐방)','체크리스트로 성취 기록'],
+      RRRR:['체험-기록-공유 사이클','감정-배움 연결 질문 1개'],
+    };
+    const TIP = {
+      LLLL:'루틴을 지켜준 뒤, 작은 실험을 한 가지만 더!',
+      LLLR:'“왜 의미 있지?” 한 문장 질문이 동기가 돼요.',
+      LLRL:'구체적 예시와 체크리스트가 최고의 친구.',
+      LLRR:'사실 요약 + 따뜻한 칭찬 한 줄을 함께.',
+      LRLL:'스프린트 후 3분 정리로 완성도 업!',
+      LRLR:'재미 먼저, 정리는 나중에 – 순서가 열쇠.',
+      LRRL:'짧게 자주! 성공 경험을 빠르게 쌓아요.',
+      LRRR:'경험 나누기를 자주—아이의 눈이 반짝여요.',
+      RLLL:'새로움은 계획 안으로—정착 루틴 만들기.',
+      RLLR:'의미와 목표를 연결해 주면 스스로 움직여요.',
+      RLRL:'예시와 규칙이 주는 안정감이 힘이 됩니다.',
+      RLRR:'사실-감정 모두 들어주는 대화가 좋아요.',
+      RRLL:'자율 프로젝트 후 “완성도 점검” 한 번.',
+      RRLR:'짧은 목표-보상으로 에너지 유지!',
+      RRRL:'현장형 미션에 강점—주말 체험 권장.',
+      RRRR:'체험-공유-확장 루프가 자라게 합니다.',
+    };
+
+    // 결과 버튼
+    document.getElementById('seeResult').addEventListener('click', showResult);
+
+    // 상담 버튼 링크 (수정 가능)
+    const CTA_LINK = '#';
+    document.getElementById('ctaLink').setAttribute('href', CTA_LINK);
+
+    // 초기 표시
+    showStep(0);
+  </script>
+</body>
+</html>
